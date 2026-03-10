@@ -42,6 +42,9 @@ app.post("/api/auth/signup", async (req, res) => {
     res.status(201).json({ message: "New user created"})
 })
 
+
+
+
 // login
 app.post("/api/auth/login", async (req, res) => {
     // creating variables for fields
@@ -71,6 +74,44 @@ app.post("/api/auth/login", async (req, res) => {
 
 })
 
+// AuthMiddleware
+const authMiddleware = (req, res, next) => {
+  // Look for the Token in the Auhorization header
+    const authHeader = req.headers.authorization
+
+  // If there's no header or it doesn't start with "Bearer " , stop there
+  if(!authHeader ||  !authHeader.startsWith("Bearer ")){
+    return res.status(401).json({ error: "No token provided" })
+  }
+
+  // 3. Pull out just the token part
+// "Bearer eyJhbGci...".split(" ") → ["Bearer", "eyJhbGci..."]
+// [1] gets the second element → just the token
+    const token = authHeader.split(" ")[1]
+
+
+    // 4. Verify the token is real not expired
+    try {
+          const decoded = jwt.verify(token, SECRET_KEY)
+          // decoded → { id: 1, username: "bless123", iat: ..., exp: ... }
+
+          req.user = decoded
+          // We ATTACH the user info to req so the route handler can use it
+ // req.user is not built into Express — we're adding it ourselves here
+
+          next();  //✅ token is valid → let the request through
+
+    } catch (e) {
+       // jwt.verify() throws if token is invalid or expired
+        res.status(401).json({ error: "invalid or expired token" })
+    }
+}
+
+// Profile route
+app.get("/api/home", authMiddleware, (req, res) => {
+    // authMiddleware ran first and attached req.user
+    res.json({ message: `Welcome ${req.user.username} ` })
+})
 
 
 const PORT = 5000;
